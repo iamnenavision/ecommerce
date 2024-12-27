@@ -1,0 +1,188 @@
+<!-- app/static/login.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+ <style>
+/* Navigation Panel Styles */
+.nav-panel {
+  width: 200px;
+  background-color: #333;
+  color: yellow;
+  padding: 10px;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  overflow-y: auto;
+}
+
+.nav-panel a {
+  color: yellow;
+  text-decoration: none;
+  font-size: 16px;
+  display: block;
+  padding: 10px;
+}
+
+.nav-panel a:hover {
+  background-color: #555;
+  color: white;
+}
+
+/* Main Content Styles */
+.main-content {
+  margin-left: 220px;
+  padding: 20px;
+  background-color: #000;
+  color: #FFD700;
+  min-height: 100vh;
+}
+
+/* Styles for the container */
+.container {
+  max-width: 400px;
+  margin: 100px auto;
+  padding: 20px;
+  background: #191919;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  text-align: center;
+}
+
+h1 {
+  color: #FFD700;
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #FFD700;
+}
+
+input {
+  width: 95%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  font-size: 16px;
+  background-color: #191919;
+  color: #FFF;
+}
+
+input::placeholder {
+  color: #555;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  background-color: #FFD700;
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #EEC900;
+}
+
+#message {
+  margin-top: 20px;
+  font-size: 16px;
+  color: #FF4500;
+}
+
+/* Style for the login link */
+.login-link {
+  margin-top: 20px;
+  color: #FFD700;
+  text-align: center;
+}
+
+.login-link a {
+  color: #FFD700;
+  text-decoration: none;
+}
+
+.login-link a:hover {
+  color: #FFA500;
+}
+
+/* Ensure the body has a dark background */
+body {
+  background-color: #000;
+  color: #FFD700;
+}
+  </style>
+</head>
+
+<body>
+
+  <!-- Navigation Panel -->
+  <div class="nav-panel">
+    <a href="/login">Login</a>
+    <a href="/">Register</a>
+    <a href="/shop">Shop</a>
+    <a href="/recommended">Recommended</a>
+    <a href="/checkout">Checkout</a>
+  </div>
+
+    <div class="container">
+        <h1>Login</h1>
+        <form id="loginForm">
+            <div>
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required autocomplete="email">
+            </div>
+            <div>
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required autocomplete="current-password">
+            </div>
+            <button type="submit">Login</button>
+        </form>
+        <div id="message"></div>
+        <a href="/" class="login-link">Don't have an account? Register</a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await axios.post('http://localhost:8000/login', {
+                    email,
+                    password
+                });
+                localStorage.setItem('access_token', response.data.access_token);
+                axios.defaults.headers.common['Authorization'] = 'Bearer ' + response.data.access_token;
+
+                // Fetch user details
+                const userResponse = await axios.get('http://localhost:8000/users/me');
+                const userId = userResponse.data.id;
+                localStorage.setItem('user_id', userId);
+
+                // Clear cartItems in localStorage
+                localStorage.removeItem('cartItems');
+
+                window.location.href = '/recommended';
+            } catch (error) {
+                const errorMessage = error.response?.data?.detail || error.message;
+                document.getElementById('message').innerText = `Error: ${errorMessage}`;
+            }
+        });
+    </script>
+</body>
+</html>

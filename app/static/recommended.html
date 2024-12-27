@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recommended Products</title>
+    <style>
+/* Navigation Panel Styles */
+.nav-panel {
+  width: 200px;
+  background-color: #333;
+  color: yellow;
+  padding: 10px;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  overflow-y: auto;
+}
+
+.nav-panel a {
+  color: yellow;
+  text-decoration: none;
+  font-size: 16px;
+  display: block;
+  padding: 10px;
+}
+
+.nav-panel a:hover {
+  background-color: #555;
+  color: white;
+}
+
+/* Main Content Styles */
+.main-content {
+  margin-left: 220px;
+  padding: 20px;
+  background-color: #000;
+  color: #FFD700;
+  min-height: 100vh;
+}
+
+/* Styles for the container */
+.container {
+  max-width: 400px;
+  margin: 100px auto;
+  padding: 20px;
+  background: #191919;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  text-align: center;
+}
+
+h1 {
+  color: #FFD700;
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #FFD700;
+}
+
+input {
+  width: 95%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  font-size: 16px;
+  background-color: #191919;
+  color: #FFF;
+}
+
+input::placeholder {
+  color: #555;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  background-color: #FFD700;
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #EEC900;
+}
+
+#message {
+  margin-top: 20px;
+  font-size: 16px;
+  color: #FF4500;
+}
+
+/* Style for the login link */
+.login-link {
+  margin-top: 20px;
+  color: #FFD700;
+  text-align: center;
+}
+
+.login-link a {
+  color: #FFD700;
+  text-decoration: none;
+}
+
+.login-link a:hover {
+  color: #FFA500;
+}
+
+/* Ensure the body has a dark background */
+body {
+  background-color: #000;
+  color: #FFD700;
+}
+    </style>
+</head>
+
+<body>
+
+    <!-- Navigation Panel -->
+    <div class="nav-panel">
+        <a href="/login">Login</a>
+        <a href="/">Register</a>
+        <a href="/shop">Shop</a>
+        <a href="/recommended">Recommended</a>
+        <a href="/checkout">Checkout</a>
+    </div>
+    <div class="main-content">
+        <div class="container">
+            <h1>Recommended Products</h1>
+
+            <!-- Список рекомендованных товаров -->
+            <div id="shop-items"></div>
+
+            <!-- Корзина -->
+            <div class="cart">
+                <h2>Shopping Cart</h2>
+                <ul id="cart-items"></ul>
+                <p>Total: <span id="cart-total">₽0</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        let cartItems = [];
+        let cartTotal = 0;
+        let userId = null;
+
+        window.addEventListener('load', function () {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                window.location.href = '/login';
+            } else {
+                axios.defaults.headers.common['Authorization'] = 'Bearer ' + token;
+            }
+        });
+
+        userId = localStorage.getItem('user_id');
+
+        if (!userId) {
+            window.location.href = '/login';
+        } else {
+            loadCart();
+        }
+
+        function saveCartToLocalStorage() {
+            localStorage.setItem('cartItems', JSON.stringify(cartItems));
+        }
+
+        async function addToCart(itemName, price, productId) {
+            if (!userId) {
+                alert('Please log in to add items to your cart.');
+                return;
+            }
+
+            try {
+                const response = await axios.post('http://localhost:8000/cart/items', {
+                    product_id: productId,
+                    quantity: 1,
+                }, {
+                    params: { user_id: userId },
+                });
+                loadCart();
+            } catch (error) {
+                console.error('Error adding item to cart:', error);
+            }
+        }
+
+        async function removeFromCart(cartItemId) {
+            if (!userId) {
+                alert('Please log in to remove items from your cart.');
+                return;
+            }
+
+            try {
+                await axios.delete(`http://localhost:8000/cart/items/${cartItemId}`, {
+                    params: { user_id: userId },
+                });
+                cartItems = cartItems.filter(item => item.id !== cartItemId);
+                updateCart();
+            } catch (error) {
+                console.error('Error removing item from cart:', error);
+            }
+        }
+
+        async function loadCart() {
+            if (!userId) return;
+            try {
+                const response = await axios.get(`http://localhost:8000/cart?user_id=${userId}`);
+                cartItems = response.data.map(item => ({
+                    id: item.id,
+                    cartId: item.cartId,
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    name: item.name,
+                    price: item.price,
+                }));
+                saveCartToLocalStorage();
+                updateCart();
+            } catch (error) {
+                console.error('Error loading cart:', error);
+            }
+        }
+
+        function updateCart() {
+            const cartItemsList = document.getElementById('cart-items');
+            const cartTotalElement = document.getElementById('cart-total');
+
+            cartItemsList.innerHTML = '';
+            cartTotal = 0;
+
+            cartItems.forEach(item => {
+                if (!item.id || !item.name || !item.price) {
+                    return;
+                }
+
+                const li = document.createElement('li');
+                li.className = 'cart-item';
+                li.innerHTML = `
+                    <span>${item.name} - ₽${item.price}</span>
+                    <button onclick="removeFromCart(${item.id})">Remove</button>
+                `;
+                cartItemsList.appendChild(li);
+                cartTotal += item.price * item.quantity;
+            });
+
+            cartTotalElement.textContent = `₽${cartTotal}`;
+        }
+
+        async function fetchShopItems() {
+            try {
+                const response = await axios.get(`http://localhost:8000/recommendations?user_id=${userId}`);
+                const items = response.data;
+                displayShopItems(items);
+            } catch (error) {
+                console.error('Error fetching shop items:', error);
+            }
+        }
+
+        function displayShopItems(items) {
+            const shopItemsContainer = document.getElementById('shop-items');
+            shopItemsContainer.innerHTML = '';
+
+            items.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'item';
+                itemDiv.innerHTML = `
+                    <span>${item.name} - ₽${item.price}</span>
+                    <button onclick="addToCart('${item.name}', ${item.price}, ${item.id})">Add to Cart</button>
+                `;
+                shopItemsContainer.appendChild(itemDiv);
+            });
+        }
+
+        fetchShopItems();
+    </script>
+</body>
+
+</html>
